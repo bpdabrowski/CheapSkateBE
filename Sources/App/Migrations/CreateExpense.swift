@@ -13,6 +13,7 @@ struct CreateExpense: Migration {
       .id()
       .field("category", .string, .required)
       .field("amount", .double, .required)
+      .field("date", .double, .required)
       .create()
   }
   
