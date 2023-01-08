@@ -25,7 +25,7 @@ final class Expense: Model {
     
     init() {}
   
-    init(id: UUID? = nil, category: String, amount: Double, date: Double) {
+    init(id: UUID? = nil, category: String, amount: Double, date: TimeInterval) {
         self.id = id
         self.category = category
         self.amount = amount
