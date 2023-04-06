@@ -12,16 +12,30 @@ struct ExpenseController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
         let expenseRoutes = routes.grouped("api", "expenses")
         expenseRoutes.get(use: getAllHandler)
-        expenseRoutes.post(use: createExpense)
         expenseRoutes.get("search", use: searchHandler)
+        
+        let tokenAuthMiddleware = Token.authenticator()
+        let guardAuthMiddleware = User.guardMiddleware()
+        let tokenAuthGroup = expenseRoutes.grouped(
+          tokenAuthMiddleware,
+          guardAuthMiddleware)
+        tokenAuthGroup.post(use: createExpense)
+        tokenAuthGroup.put(":acronymID", use: updateHandler)
     }
     
-    func getAllHandler(_ req: Request) -> EventLoopFuture<[Expense]> {
-        Expense.query(on: req.db).all()
+    func getAllHandler(_ req: Request) throws -> EventLoopFuture<[Expense]> {
+        return Expense.query(on: req.db).all()
     }
     
     func createExpense(_ req: Request) throws -> EventLoopFuture<Expense> {
-        let expense = try req.content.decode(Expense.self)
+        let data = try req.content.decode(CreateExpenseData.self)
+        let user = try req.auth.require(User.self)
+        let expense = try Expense(
+            category: data.category,
+            amount: data.amount,
+            date: data.date,
+            userID: user.requireID()
+        )
         return expense.save(on: req.db).map { expense }
     }
     
@@ -39,4 +53,28 @@ struct ExpenseController: RouteCollection {
                 }
             }
     }
+    
+    func updateHandler(_ req: Request) throws -> EventLoopFuture<Expense> {
+        let updateData = try req.content.decode(CreateExpenseData.self)
+        let user = try req.auth.require(User.self)
+        let userID = try user.requireID()
+        return Expense
+            .find(req.parameters.get("expenseID"), on: req.db)
+            .unwrap(or: Abort(.notFound))
+            .flatMap { expense in
+                expense.category = updateData.category
+                expense.amount = updateData.amount
+                expense.date = updateData.date
+                expense.$user.id = userID
+                return expense.save(on: req.db).map { expense }
+        }
+    }
+
 }
+
+struct CreateExpenseData: Content {
+    let category: String
+    let amount: Double
+    let date: TimeInterval
+}
+

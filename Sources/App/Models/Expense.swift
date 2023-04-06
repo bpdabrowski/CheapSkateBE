@@ -23,13 +23,23 @@ final class Expense: Model {
     @Field(key: "date")
     var date: TimeInterval
     
+    @Parent(key: "userID")
+    var user: User
+    
     init() {}
   
-    init(id: UUID? = nil, category: String, amount: Double, date: TimeInterval) {
+    init(
+        id: UUID? = nil,
+        category: String,
+        amount: Double,
+        date: TimeInterval,
+        userID: User.IDValue
+    ) {
         self.id = id
         self.category = category
         self.amount = amount
         self.date = date
+        self.$user.id = userID
     }
 }
 
