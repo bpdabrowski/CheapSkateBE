@@ -64,22 +64,8 @@ extension User {
     }
 }
 
-extension EventLoopFuture where Value: User {
-    func convertToPublic() -> EventLoopFuture<User.Public> {
-        return self.map { user in
-            return user.convertToPublic()
-        }
-    }
-}
-
 extension Collection where Element: User {
     func convertToPublic() -> [User.Public] {
-        return self.map { $0.convertToPublic() }
-    }
-}
-
-extension EventLoopFuture where Value == Array<User> {
-    func convertToPublic() -> EventLoopFuture<[User.Public]> {
         return self.map { $0.convertToPublic() }
     }
 }

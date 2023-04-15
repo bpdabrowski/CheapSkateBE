@@ -12,7 +12,10 @@ struct ExpenseController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
         let expenseRoutes = routes.grouped("api", "expenses")
         expenseRoutes.get(use: getAllHandler)
-        expenseRoutes.get("search", use: searchHandler)
+        expenseRoutes.get(
+          ":userID",
+          "search",
+          use: getExpensesHandler)
         
         let tokenAuthMiddleware = Token.authenticator()
         let guardAuthMiddleware = User.guardMiddleware()
@@ -23,8 +26,8 @@ struct ExpenseController: RouteCollection {
         tokenAuthGroup.put(":acronymID", use: updateHandler)
     }
     
-    func getAllHandler(_ req: Request) throws -> EventLoopFuture<[Expense]> {
-        return Expense.query(on: req.db).all()
+    func getAllHandler(_ req: Request) -> EventLoopFuture<[Expense]> {
+        Expense.query(on: req.db).all()
     }
     
     func createExpense(_ req: Request) throws -> EventLoopFuture<Expense> {
@@ -37,6 +40,24 @@ struct ExpenseController: RouteCollection {
             userID: user.requireID()
         )
         return expense.save(on: req.db).map { expense }
+    }
+    
+    func getExpensesHandler(_ req: Request) throws -> EventLoopFuture<[Expense]> {
+        guard let searchTerm = req.query[Int.self, at: "month"] else {
+            throw Abort(.badRequest)
+        }
+        
+        return User.find(req.parameters.get("userID"), on: req.db)
+            .unwrap(or: Abort(.notFound))
+            .flatMap { user in
+                user.$expenses.get(on: req.db)
+            }
+            .map { expenses in
+                expenses.filter { expense in
+                    let component = Calendar.current.component(.month, from: Date(timeIntervalSinceReferenceDate: expense.date))
+                    return component == searchTerm
+                }
+            }
     }
     
     func searchHandler(_ req: Request) throws -> EventLoopFuture<[Expense]> {

@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  CreateAdminUser.swift
 //  
 //
 //  Created by Brendyn Dabrowski on 2/9/23.
@@ -13,7 +13,9 @@ struct CreateAdminUser: Migration {
     func prepare(on database: Database) -> EventLoopFuture<Void> {
         let passwordHash: String
         do {
-            passwordHash = try Bcrypt.hash("password")
+            let password = UUID().uuidString
+            passwordHash = try Bcrypt.hash(password)
+            print("Admin Password: \(password)")
         } catch {
             return database.eventLoop.future(error: error)
         }
