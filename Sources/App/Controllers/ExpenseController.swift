@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  ExpenseController.swift
 //  
 //
 //  Created by Brendyn Dabrowski on 12/31/22.
@@ -11,7 +11,7 @@ import Fluent
 struct ExpenseController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
         let expenseRoutes = routes.grouped("api", "expenses")
-        expenseRoutes.get(use: getAllHandler)
+        expenseRoutes.get(":userID", use: getAllHandler)
         expenseRoutes.get(
           ":userID",
           "search",
@@ -27,7 +27,11 @@ struct ExpenseController: RouteCollection {
     }
     
     func getAllHandler(_ req: Request) -> EventLoopFuture<[Expense]> {
-        Expense.query(on: req.db).all()
+        User.find(req.parameters.get("userID"), on: req.db)
+            .unwrap(or: Abort(.notFound))
+            .flatMap { user in
+                user.$expenses.get(on: req.db)
+            }
     }
     
     func createExpense(_ req: Request) throws -> EventLoopFuture<Expense> {
