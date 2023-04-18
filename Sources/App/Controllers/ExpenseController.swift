@@ -26,8 +26,12 @@ struct ExpenseController: RouteCollection {
         tokenAuthGroup.put(":acronymID", use: updateHandler)
     }
     
-    func getAllHandler(_ req: Request) -> EventLoopFuture<[Expense]> {
-        User.find(req.parameters.get("userID"), on: req.db)
+    func getAllHandler(_ req: Request) throws -> EventLoopFuture<[Expense]> {
+        guard let userId = req.headers.first(name: "user-id") else {
+            throw Abort(.networkAuthenticationRequired)
+        }
+        
+        return User.find(UUID(uuidString: userId), on: req.db)
             .unwrap(or: Abort(.notFound))
             .flatMap { user in
                 user.$expenses.get(on: req.db)
@@ -47,11 +51,15 @@ struct ExpenseController: RouteCollection {
     }
     
     func getExpensesHandler(_ req: Request) throws -> EventLoopFuture<[Expense]> {
+        guard let userId = req.headers.first(name: "user-id") else {
+            throw Abort(.networkAuthenticationRequired)
+        }
+        
         guard let searchTerm = req.query[Int.self, at: "month"] else {
             throw Abort(.badRequest)
         }
         
-        return User.find(req.parameters.get("userID"), on: req.db)
+        return User.find(UUID(uuidString: userId), on: req.db)
             .unwrap(or: Abort(.notFound))
             .flatMap { user in
                 user.$expenses.get(on: req.db)
